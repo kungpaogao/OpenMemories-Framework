@@ -16,7 +16,12 @@ sourceSets {
 
 dependencies {
     provided project(':stubs')
-    provided 'com.google.android:android:4.1.1.4'
+    def sdkHome = System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT')
+    def androidJar = sdkHome ? file("${sdkHome}/platforms/android-16/android.jar") : null
+    if (androidJar != null && androidJar.exists())
+        provided files(androidJar)
+    else
+        provided 'com.google.android:android:4.1.1.4'
 }
 
 sourceCompatibility = 1.6
