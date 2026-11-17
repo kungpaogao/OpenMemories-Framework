@@ -57,13 +57,25 @@ public class DisplayManager {
         }
 
         private void handleStatusChange(int event) {
-            switch (event) {
-                case com.sony.scalar.hardware.avio.DisplayManager.EVENT_SWITCH_DEVICE:
-                    Display display = getActiveDisplay();
-                    for (Listener listener : listeners)
-                        listener.displayChanged(display);
-                    break;
+            for (EventListener listener : eventListeners)
+                listener.onDisplayEvent(event);
+            if (event == EVENT_SWITCH_DEVICE) {
+                Display display = getActiveDisplay();
+                for (Listener listener : listeners)
+                    listener.displayChanged(display);
             }
+        }
+
+        @Override
+        public void startQfhdOutput() {
+            if (manager != null)
+                manager.startQfhdFormatOutput();
+        }
+
+        @Override
+        public void stopQfhdOutput() {
+            if (manager != null)
+                manager.stopQfhdFormatOutput();
         }
 
         @Override
@@ -153,6 +165,19 @@ public class DisplayManager {
         void displayChanged(Display display);
     }
 
+    /** Receives every display event, including HDMI and viewfinder attach. */
+    public interface EventListener {
+        void onDisplayEvent(int event);
+    }
+
+    public static final int EVENT_SWITCH_DEVICE = 4096;
+    public static final int EVENT_ATTACH_DEVICE = 8192;
+    public static final int EVENT_DETACH_DEVICE = 8448;
+    public static final int EVENT_HDMI_FORMAT = 12288;
+    public static final int EVENT_CHANGE_VIEW_PATTERN = 16384;
+    public static final int EVENT_START_QFHD = 24576;
+    public static final int EVENT_STOP_QFHD = 24832;
+
     /**
      * Creates a new DisplayManager instance.
      * All instances have to be released before the app pauses (see {@link #release()}).
@@ -166,6 +191,7 @@ public class DisplayManager {
 
     private android.view.Display display;
     protected final List<Listener> listeners = new ArrayList<Listener>();
+    protected final List<EventListener> eventListeners = new ArrayList<EventListener>();
 
     private DisplayManager(Context context) {
         display = ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
@@ -183,6 +209,22 @@ public class DisplayManager {
      */
     public void removeListener(Listener listener) {
         listeners.remove(listener);
+    }
+
+    public void addEventListener(EventListener listener) {
+        eventListeners.add(listener);
+    }
+
+    public void removeEventListener(EventListener listener) {
+        eventListeners.remove(listener);
+    }
+
+    /** Start 4K HDMI output. No effect off a camera. */
+    public void startQfhdOutput() {
+    }
+
+    /** Stop 4K HDMI output. No effect off a camera. */
+    public void stopQfhdOutput() {
     }
 
     /**
