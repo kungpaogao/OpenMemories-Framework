@@ -1,8 +1,12 @@
 package com.github.ma1co.openmemories.framework;
 
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Environment;
+import android.os.StatFs;
 import android.provider.MediaStore;
 import com.sony.scalar.provider.AvindexStore;
 
@@ -20,6 +24,62 @@ public abstract class MediaManager {
         private CameraMediaManager(Context context) {
             super(context, AvindexStore.Images.Media.EXTERNAL_CONTENT_URI, AvindexStore.Images.Media._ID, AvindexStore.Images.Media.CONTENT_CREATED_UTC_DATE_TIME);
         }
+
+        @Override
+        public String[] getMediaIds() {
+            String[] ids = AvindexStore.getExternalMediaIds();
+            return ids == null ? new String[0] : ids;
+        }
+
+        @Override
+        public String[] getVirtualMediaIds() {
+            String[] ids = AvindexStore.getVirtualMediaIds();
+            return ids == null ? new String[0] : ids;
+        }
+
+        @Override
+        public long getAvailableBytes(String mediaId) {
+            return AvindexStore.getAvailableSize(mediaId);
+        }
+
+        @Override
+        public boolean rotateImage(long id, int orientation) {
+            return AvindexStore.Images.Media.rotateImage(context().getContentResolver(), getImageContentUri(), id, orientation);
+        }
+
+        @Override
+        public boolean waitForDatabase(String mediaId) {
+            return AvindexStore.Images.waitAndUpdateDatabase(context().getContentResolver(), mediaId);
+        }
+
+        @Override
+        public boolean loadMedia(String mediaId, int contentType) {
+            return AvindexStore.loadMedia(mediaId, contentType);
+        }
+
+        @Override
+        public Cursor queryNewestVideos() {
+            String[] ids = getMediaIds();
+            String mediaId = ids.length == 0 ? "external" : ids[0];
+            return context().getContentResolver().query(
+                    AvindexStore.Video.Media.getContentUri(mediaId),
+                    new String[] { AvindexStore.Video.Media._ID },
+                    null,
+                    null,
+                    AvindexStore.Video.Media.CONTENT_CREATED_UTC_DATE_TIME + " DESC");
+        }
+
+        @Override
+        public int getMediaType(String mediaId) {
+            com.sony.scalar.media.MediaInfo info = AvindexStore.getMediaInfo(mediaId);
+            return info == null ? MEDIA_UNKNOWN : info.getMediaType();
+        }
+
+        @Override
+        public boolean isEyeFi(String mediaId) {
+            com.sony.scalar.media.MediaInfo info = AvindexStore.getMediaInfo(mediaId);
+            return info != null && info.isEyeFi();
+        }
     }
 
     /**
@@ -31,6 +91,13 @@ public abstract class MediaManager {
             super(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_TAKEN);
         }
     }
+
+    public static final int CONTENT_STILL = 1;
+    public static final int CONTENT_MP4 = 5;
+    public static final int CONTENT_XAVC = 7;
+    public static final int MEDIA_UNKNOWN = 0;
+    public static final int MEDIA_SD = 1;
+    public static final int MEDIA_MEMORY_STICK = 2;
 
     /**
      * Creates a new MediaManager instance
@@ -108,5 +175,71 @@ public abstract class MediaManager {
      */
     public ImageInfo getImageInfo(Cursor cursor) {
         return getImageInfo(getImageId(cursor));
+    }
+
+    protected Context context() {
+        return context;
+    }
+
+    /** Memory-card ids. {@code external} on an emulator. */
+    public String[] getMediaIds() {
+        return new String[] { "external" };
+    }
+
+    /** Virtual media ids. Empty off a camera. */
+    public String[] getVirtualMediaIds() {
+        return new String[0];
+    }
+
+    /** Free bytes on the given card. */
+    public long getAvailableBytes(String mediaId) {
+        try {
+            StatFs stats = new StatFs(Environment.getExternalStorageDirectory().getPath());
+            return (long) stats.getAvailableBlocks() * (long) stats.getBlockSize();
+        } catch (RuntimeException ignored) {
+            return 0L;
+        }
+    }
+
+    /** Rotate a stored still. {@code orientation} is degrees. */
+    public boolean rotateImage(long id, int orientation) {
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Images.Media.ORIENTATION, Integer.valueOf(orientation));
+        return context.getContentResolver().update(ContentUris.withAppendedId(uri, id), values, null, null) > 0;
+    }
+
+    /** Block until the image database has caught up with a save. */
+    public boolean waitForDatabase(String mediaId) {
+        return true;
+    }
+
+    /** Ask the camera to index a card. {@code contentType} is one of the {@code CONTENT_*} constants. */
+    public boolean loadMedia(String mediaId, int contentType) {
+        return true;
+    }
+
+    /** Newest movies first. */
+    public Cursor queryNewestVideos() {
+        return context.getContentResolver().query(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                new String[] { MediaStore.Video.Media._ID },
+                null,
+                null,
+                MediaStore.Video.Media.DATE_TAKEN + " DESC");
+    }
+
+    /** Id of the video the cursor points at. */
+    public long getVideoId(Cursor cursor) {
+        return cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID));
+    }
+
+    /** {@link #MEDIA_SD}, {@link #MEDIA_MEMORY_STICK}, or {@link #MEDIA_UNKNOWN}. */
+    public int getMediaType(String mediaId) {
+        return MEDIA_UNKNOWN;
+    }
+
+    /** Whether the card is an Eye-Fi card. */
+    public boolean isEyeFi(String mediaId) {
+        return false;
     }
 }
