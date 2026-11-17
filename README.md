@@ -24,18 +24,17 @@ Build Android apps for your favorite Sony camera.
 4. Install it on your camera using [PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE)
 
 ## Features ##
-This is a wrapper framework around Sony specific classes. For every Sony feature, an additional dummy implementation is provided. This allows you to test your app on any Android device / emulator.
-
-This framework is still under development. Most wrappers aren't available yet.
+This is a wrapper framework around the camera OS classes the PlayMemories apps call. Each wrapper uses the Sony implementation on a camera and an Android stand-in everywhere else, so the same app runs in the emulator and on the camera. The choice follows {@code DeviceInfo.isCamera()} ({@code Build.BRAND=sony}, {@code MODEL=ScalarA}, {@code DEVICE=dslr-diadem}).
 
 See the [Javadoc](https://jitpack.io/com/github/ma1co/OpenMemories-Framework/framework/-SNAPSHOT/javadoc/) for more information.
 
 ### DeviceInfo ###
-Access information about your device (model name, serial number, firmware version, etc).
+Access information about your device (model name, serial number, firmware version, picture sizes, Wi-Fi, GPS, NFC).
 
 ```java
 import com.github.ma1co.openmemories.framework.DeviceInfo;
 String serialNumber = DeviceInfo.getInstance().getSerialNumber();
+boolean wifi = DeviceInfo.getInstance().isWifiSupported();
 ```
 
 ### DateTime ###
@@ -47,7 +46,7 @@ java.util.Calendar currentTime = DateTime.getInstance().getCurrentTime();
 ```
 
 ### DisplayManager ###
-Access information about the device's displays.
+Access information about the device's displays, including viewfinder, HDMI, and 4K output events.
 
 ```java
 import com.github.ma1co.openmemories.framework.DisplayManager;
@@ -57,7 +56,7 @@ displayManager.release();
 ```
 
 ### MediaManager ###
-Query the images on the memory card.
+Query the images and movies on the memory card, rotate stills, and read free space.
 
 ```java
 import com.github.ma1co.openmemories.framework.ImageInfo;
@@ -70,3 +69,24 @@ while (cursor.moveToNext()) {
 }
 cursor.close();
 ```
+
+### Camera and stills ###
+Open the camera, change Sony parameters, run a capture sequence, and save a JPEG.
+
+```java
+import com.github.ma1co.openmemories.framework.Camera;
+import com.github.ma1co.openmemories.framework.CameraParameters;
+import com.github.ma1co.openmemories.framework.JpegSaver;
+import com.github.ma1co.openmemories.framework.StillImage;
+Camera camera = Camera.open(null);
+CameraParameters parameters = camera.getParameters();
+parameters.setDriveMode(CameraParameters.DRIVE_SINGLE);
+parameters.apply();
+StillImage image = StillImage.decodeFile("/mnt/sdcard/DCIM/100MSDCF/DSC00001.JPG", StillImage.TYPE_SCREEN);
+JpegSaver.save(this, image, "external", JpegSaver.QUALITY_FINE);
+camera.release();
+```
+
+Other camera-OS wrappers follow the same pattern: {@code CaptureSequence}, {@code ImageFilters}, {@code FaceFinder}, {@code SignalProcessor}, {@code CameraKeys}, {@code IndicatorLights}, {@code CameraSystem}, {@code CameraNotices}, {@code AudioDevices}, {@code MovieRecorder}, {@code MoviePlayer}, {@code HighlightMovie}, and {@code ImageDisplay}.
+
+The PlayMemories Web API and Leza HTTP stack are libraries shipped inside those apps. They are not part of the camera OS, so this framework does not wrap them.
