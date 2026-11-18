@@ -34,6 +34,12 @@ public class DateTime {
 
             return calendar;
         }
+
+        @Override
+        public int getGmtOffsetMinutes() {
+            PlainTimeZone tz = TimeUtil.getCurrentTimeZone();
+            return tz.gmtDiff + tz.summerTimeDiff;
+        }
     }
 
     private static final DateTime instance = DeviceInfo.getInstance().isCamera() ? new CameraDateTime() : new DateTime();
@@ -53,5 +59,13 @@ public class DateTime {
      */
     public Calendar getCurrentTime() {
         return new GregorianCalendar();
+    }
+
+    /**
+     * Offset from UTC in minutes, including daylight saving when the camera reports it.
+     */
+    public int getGmtOffsetMinutes() {
+        return getCurrentTime().get(Calendar.ZONE_OFFSET) / 60000
+                + getCurrentTime().get(Calendar.DST_OFFSET) / 60000;
     }
 }

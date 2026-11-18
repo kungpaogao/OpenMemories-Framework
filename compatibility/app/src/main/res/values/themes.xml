@@ -1,0 +1,6 @@
+<resources>
+    <style name="Base.Theme.Compatibility" parent="@android:style/Theme.NoTitleBar">
+    </style>
+
+    <style name="Theme.Compatibility" parent="Base.Theme.Compatibility" />
+</resources>
