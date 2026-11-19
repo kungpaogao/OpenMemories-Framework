@@ -90,3 +90,10 @@ camera.release();
 Other camera-OS wrappers follow the same pattern: {@code CaptureSequence}, {@code ImageFilters}, {@code FaceFinder}, {@code SignalProcessor}, {@code CameraKeys}, {@code IndicatorLights}, {@code CameraSystem}, {@code CameraNotices}, {@code AudioDevices}, {@code MovieRecorder}, {@code MoviePlayer}, {@code HighlightMovie}, and {@code ImageDisplay}.
 
 The PlayMemories Web API and Leza HTTP stack are libraries shipped inside those apps. They are not part of the camera OS, so this framework does not wrap them.
+
+## Compatibility ##
+The sample app in [compatibility](compatibility) calls each framework API and records whether this camera's firmware supports it. A call that returns a result is compatible. A `getSupported*` or `is*Supported` query counts only when that result is a real value. A missing class or method is incompatible. Any other failure, including a timeout, is skipped. Shutter, card format, factory reset, and power-off are not fired.
+
+Build it from that directory and install the debug APK on the camera. The run is logged with the tag `ApiCompat` and written to `COMPAT.TXT` at the root of the memory card. The menu key returns to the Android home screen.
+
+Checked-in results, one file per model, are in [compatibility/reports](compatibility/reports).
