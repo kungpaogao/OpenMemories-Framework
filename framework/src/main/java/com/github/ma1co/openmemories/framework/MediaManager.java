@@ -49,8 +49,27 @@ public abstract class MediaManager {
         }
 
         @Override
-        public boolean rotateImage(long id, int orientation) {
-            return AvindexStore.Images.Media.rotateImage(context().getContentResolver(), getImageContentUri(), id, orientation);
+        public boolean rotateImage(long id, int degrees) {
+            if (degrees < -270 || degrees > 270 || degrees % 90 != 0)
+                return false;
+            if (degrees == 0)
+                return true;
+            int code;
+            if (degrees == 90)
+                code = AvindexStore.Images.Media.RELATIVE_ANGLE_PLUS_90;
+            else if (degrees == -90)
+                code = AvindexStore.Images.Media.RELATIVE_ANGLE_MINUS_90;
+            else if (degrees == 180)
+                code = AvindexStore.Images.Media.RELATIVE_ANGLE_PLUS_180;
+            else if (degrees == -180)
+                code = AvindexStore.Images.Media.RELATIVE_ANGLE_MINUS_180;
+            else if (degrees == 270)
+                code = AvindexStore.Images.Media.RELATIVE_ANGLE_PLUS_270;
+            else if (degrees == -270)
+                code = AvindexStore.Images.Media.RELATIVE_ANGLE_MINUS_270;
+            else
+                return false;
+            return AvindexStore.Images.Media.rotateImage(context().getContentResolver(), getImageContentUri(), id, code);
         }
 
         @Override
@@ -303,11 +322,34 @@ public abstract class MediaManager {
         }
     }
 
-    /** Rotate a stored still. {@code orientation} is degrees. */
-    public boolean rotateImage(long id, int orientation) {
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.Images.Media.ORIENTATION, Integer.valueOf(orientation));
-        return context.getContentResolver().update(ContentUris.withAppendedId(uri, id), values, null, null) > 0;
+    /**
+     * Rotate a stored still by {@code degrees} relative to its current orientation (positive = clockwise).
+     * {@code degrees} must be a multiple of 90 between -270 and 270 inclusive.
+     */
+    public boolean rotateImage(long id, int degrees) {
+        if (degrees < -270 || degrees > 270 || degrees % 90 != 0)
+            return false;
+        if (degrees == 0)
+            return true;
+        Uri imageUri = ContentUris.withAppendedId(uri, id);
+        Cursor cursor = context.getContentResolver().query(
+                imageUri,
+                new String[] { MediaStore.Images.Media.ORIENTATION },
+                null,
+                null,
+                null);
+        try {
+            if (cursor == null || !cursor.moveToFirst())
+                return false;
+            int current = cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.ORIENTATION));
+            int next = ((current + degrees) % 360 + 360) % 360;
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.Images.Media.ORIENTATION, Integer.valueOf(next));
+            return context.getContentResolver().update(imageUri, values, null, null) > 0;
+        } finally {
+            if (cursor != null)
+                cursor.close();
+        }
     }
 
     /** Block until the image database has caught up with a save. */
