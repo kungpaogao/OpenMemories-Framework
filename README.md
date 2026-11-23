@@ -4,16 +4,20 @@ Build Android apps for your favorite Sony camera.
 ## How to use ##
 1. Add the framework to your dependencies. Add this to your *build.gradle*:
 
-    ```gradle
-    repositories {
-        jcenter()
-        maven { url "https://jitpack.io" }
+    ```kotlin
+    // settings.gradle.kts
+    dependencyResolutionManagement {
+        repositories {
+            google()
+            mavenCentral()
+            maven { url = uri("https://jitpack.io") }
+        }
     }
+    // app/build.gradle.kts
     dependencies {
-        compile 'com.github.ma1co.OpenMemories-Framework:framework:-SNAPSHOT'
-
-        // If you need direct access to the Sony APIs, you can add this line, too:
-        provided 'com.github.ma1co.OpenMemories-Framework:stubs:-SNAPSHOT'
+        implementation("com.github.kungpaogao.OpenMemories-Framework:framework:0.2.0")
+        // Sony API stubs, to call com.sony.scalar directly. Never package them: the camera provides the real classes.
+        compileOnly("com.github.kungpaogao.OpenMemories-Framework:stubs:0.2.0")
     }
     ```
 

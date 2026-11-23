@@ -1,46 +1,51 @@
-apply plugin: 'java'
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
 
-repositories {
-    ivy {
-        url 'http://jaist.dl.sourceforge.net'
-        layout 'pattern', {
-            artifact '/project/[organisation]/[module]/[module]-[revision]/[module]-[revision].[ext]'
-        }
+java {
+    disableAutoTargetJvm()
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+tasks.named('compileJava') {
+    dependsOn 'assembleJasmin'
+}
+
+def jasminSourceDir = file('src/main/jasmin')
+def jasminJar = rootProject.file('compatibility/tools/jasmin.jar')
+def jasminOutDir = layout.buildDirectory.dir('classes/jasmin')
+
+tasks.register('assembleJasmin', JavaExec) {
+    mainClass = 'jasmin.Main'
+    classpath = files(jasminJar)
+    workingDir jasminSourceDir
+
+    def sourceTree = fileTree(dir: jasminSourceDir, include: '**/*.j')
+    def sources = sourceTree.files.collect { jasminSourceDir.toPath().relativize(it.toPath()).toString() }
+
+    def outDir = jasminOutDir.get().asFile
+    args = ['-d', outDir.absolutePath] + sources
+
+    inputs.files(sourceTree, jasminJar)
+    outputs.dir(jasminOutDir)
+}
+
+sourceSets {
+    main {
+        java.setSrcDirs([])
+        output.dir(jasminOutDir, builtBy: 'assembleJasmin')
+        // Gradle only exposes project :stubs on compile classpath via classesDirs, not extra output.dir alone.
+        output.classesDirs.from(jasminOutDir)
+        output.classesDirs.builtBy('assembleJasmin')
     }
 }
 
-configurations {
-    tool
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
 }
-
-dependencies {
-    // download the jasmin assembler from sourceforge
-    tool 'jasmin:jasmin:2.4@zip'
-}
-
-task unpackAssembler(type: Copy) {
-    // unpack the jasmin assembler
-    from zipTree(configurations.tool.find {it.name.startsWith('jasmin')})
-    into "${buildDir}/jasmin"
-    includeEmptyDirs = false
-    include '**/jasmin.jar'
-}
-
-task assembleJasmin(type: JavaExec) {
-    // assemble the jasmin files
-    def classesDir = sourceSets.main.output.classesDir
-    def sourceDir = "$projectDir/src/main/jasmin"
-    def sourceSet = fileTree(dir: sourceDir, include: '**/*.j')
-    def sources = sourceSet.getFiles().collect {new File(sourceDir).toPath().relativize(it.toPath())}
-
-    main = 'jasmin.Main'
-    args = ['-d', classesDir] + sources
-    classpath fileTree(dir: "${buildDir}/jasmin", include: '**/*.jar')
-    workingDir sourceDir
-
-    outputs.dir classesDir
-    inputs.files sourceSet
-}
-
-assembleJasmin.dependsOn unpackAssembler
-classes.dependsOn assembleJasmin

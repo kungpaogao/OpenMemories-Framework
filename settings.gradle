@@ -1,2 +1,10 @@
+rootProject.name = 'OpenMemories-Framework'
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+
 include ':framework'
 include ':stubs'
