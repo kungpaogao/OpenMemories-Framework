@@ -87,6 +87,21 @@ JpegSaver.save(this, image, "external", JpegSaver.QUALITY_FINE);
 camera.release();
 ```
 
+To process a picture the camera stored itself, wait for it in the media database and decode it once the camera is released. The hardware decoder is busy while the shooting camera is open. `Camera.setJpegListener` installs the `CameraEx` JPEG listener only while a listener is set.
+
+```java
+mediaManager.setImageAddedListener(new MediaManager.ImageAddedListener() {
+    @Override public void onImageAdded(long id) {
+        mediaManager.setImageAddedListener(null);
+        camera.release();
+        StillImage image = StillImage.decodeImage(mediaManager.getImageInfo(id), StillImage.TYPE_FULL);
+        // ...
+        image.release();
+    }
+});
+camera.takePicture();
+```
+
 Other camera-OS wrappers follow the same pattern: {@code CaptureSequence}, {@code ImageFilters}, {@code FaceFinder}, {@code SignalProcessor}, {@code CameraKeys}, {@code IndicatorLights}, {@code CameraSystem}, {@code CameraNotices}, {@code AudioDevices}, {@code MovieRecorder}, {@code MoviePlayer}, {@code HighlightMovie}, and {@code ImageDisplay}.
 
 The PlayMemories Web API and Leza HTTP stack are libraries shipped inside those apps. They are not part of the camera OS, so this framework does not wrap them.
