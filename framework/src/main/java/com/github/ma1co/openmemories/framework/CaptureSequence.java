@@ -243,10 +243,17 @@ public class CaptureSequence {
     public void setOptions(int exposureCount, int recordCount, String memoryMapFile) {
     }
 
+    /** The caller owns the returned image and must release it (or pass it to {@link #store} with {@code releaseAfter}). */
     public StillImage develop(RawFrame frame) {
-        if (frame instanceof BitmapFrame)
-            return ((BitmapFrame) frame).image();
-        return null;
+        if (!(frame instanceof BitmapFrame))
+            return null;
+        StillImage image = ((BitmapFrame) frame).image();
+        if (image == null || !image.isValid())
+            return null;
+        android.graphics.Bitmap bitmap = image.getBitmap();
+        if (bitmap == null)
+            return null;
+        return StillImage.fromBitmap(StillImage.copy(bitmap));
     }
 
     public void store(StillImage image, boolean releaseAfter) {
