@@ -488,6 +488,10 @@ public class Camera {
     public static final int FOCUS_DIRECTION_NEAR = 0;
     /** Manual-focus drive toward infinity. */
     public static final int FOCUS_DIRECTION_FAR = 1;
+    /** Zoom toward telephoto; matches {@code CameraEx.ZOOM_DIRECTION_TELE}. */
+    public static final int ZOOM_DIRECTION_TELE = 0;
+    /** Zoom toward wide angle; matches {@code CameraEx.ZOOM_DIRECTION_WIDE}. */
+    public static final int ZOOM_DIRECTION_WIDE = 1;
     /** Shutter listener status: the shutter fired. */
     public static final int SHUTTER_OK = 0;
     /** Shutter listener status: the shutter was canceled. */
@@ -940,12 +944,15 @@ public class Camera {
         return new Flash(false, false, false, false);
     }
 
+    /** {@code direction} is {@link #ZOOM_DIRECTION_TELE} or {@link #ZOOM_DIRECTION_WIDE}. */
     public void startZoom(int direction, int speed) {
         if (!camera.getParameters().isZoomSupported())
             return;
         int zoom = camera.getParameters().getZoom();
         int max = camera.getParameters().getMaxZoom();
-        int next = direction >= 0 ? Math.min(max, zoom + Math.max(1, speed)) : Math.max(0, zoom - Math.max(1, speed));
+        int next = direction == ZOOM_DIRECTION_TELE
+                ? Math.min(max, zoom + Math.max(1, speed))
+                : Math.max(0, zoom - Math.max(1, speed));
         android.hardware.Camera.Parameters parameters = camera.getParameters();
         parameters.setZoom(next);
         camera.setParameters(parameters);
