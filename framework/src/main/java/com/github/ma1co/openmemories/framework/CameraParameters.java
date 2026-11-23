@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  * Camera parameters shared by the Sony body and the Android camera.
- * Change values, then call {@link #apply()} or {@link Camera#setParameters(CameraParameters)}.
+ * Change values, then call {@link #apply()} or {@link com.github.ma1co.openmemories.framework.Camera#setParameters(CameraParameters)}.
  * Sony-only controls are stored and ignored by the emulator, and they are sent to
  * {@code CameraEx.ParametersModifier} on a camera.
  */
