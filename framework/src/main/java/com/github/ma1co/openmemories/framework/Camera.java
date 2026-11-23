@@ -203,6 +203,10 @@ public class Camera {
             }
             gammaTables.clear();
             if (cameraEx != null) {
+                // Without this the preview overlay stays held, and the next open fails with "Overlay Creation Failed".
+                android.hardware.Camera normal = cameraEx.getNormalCamera();
+                if (normal != null)
+                    normal.release();
                 cameraEx.release();
                 cameraEx = null;
             }
