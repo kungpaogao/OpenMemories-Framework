@@ -87,6 +87,16 @@ public class StillImage {
         return new StillImage(BitmapFactory.decodeFile(path, options));
     }
 
+    /**
+     * Decodes a stored image, e.g. one from {@link MediaManager#getImageInfo}.
+     * {@code imageType} is {@link #TYPE_FULL} or {@link #TYPE_SCREEN}.
+     * On a camera, release the {@link Camera} first: the hardware decoder answers BUSY ({@code 0x1004}) while the
+     * shooting camera is open.
+     */
+    public static StillImage decodeImage(ImageInfo info, int imageType) {
+        return decodeFile(info.getData(), imageType);
+    }
+
     public static StillImage fromBitmap(Bitmap bitmap) {
         return new StillImage(bitmap);
     }

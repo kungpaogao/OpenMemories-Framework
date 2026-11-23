@@ -40,7 +40,8 @@ public abstract class ImageInfo {
             return AvindexStore.Images.Media.getImageInfo(getData());
         }
 
-        private String getData() {
+        @Override
+        String getData() {
             return cursor.getString(cursor.getColumnIndexOrThrow(AvindexStore.Images.Media.DATA));
         }
 
@@ -134,7 +135,8 @@ public abstract class ImageInfo {
             }
         }
 
-        private String getData() {
+        @Override
+        String getData() {
             return cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA));
         }
 
@@ -252,6 +254,12 @@ public abstract class ImageInfo {
     public long getImageId() {
         return id;
     }
+
+    /**
+     * Returns the image's {@code _data} column. On a camera this is an avindex URI such as
+     * {@code avindex://1000/00000001-default/000003AC-00001312}; elsewhere it is a file path.
+     */
+    abstract String getData();
 
     /**
      * Returns the image's filename, e.g. DSC00001.JPG
