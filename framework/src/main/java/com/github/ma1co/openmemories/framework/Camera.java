@@ -805,6 +805,12 @@ public class Camera {
             captureStatusListener.onStart(CAPTURE_REASON_NORMAL);
         camera.takePicture(null, null, new android.hardware.Camera.PictureCallback() {
             @Override public void onPictureTaken(byte[] data, android.hardware.Camera cam) {
+                if (camera == cam) {
+                    try {
+                        cam.startPreview();
+                    } catch (RuntimeException ignored) {
+                    }
+                }
                 deliverJpeg(data);
                 if (captureStatusListener != null)
                     captureStatusListener.onEnd(CAPTURE_REASON_NORMAL, 0);
