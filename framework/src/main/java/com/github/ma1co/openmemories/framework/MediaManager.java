@@ -109,16 +109,23 @@ public abstract class MediaManager {
         private BroadcastReceiver imageWatcherReceiver;
 
         @Override
-        protected void startWatchingImages() {
+        protected void startWatchingImages(Handler handler) {
             // Camera.setStoredImageListener never fires on the ILCE-7R.
+            final Handler watchHandler = handler;
             imageWatcherReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context ctxt, Intent intent) {
-                    handleImageStoreChanged();
+                    watchHandler.post(new Runnable() {
+                        public void run() {
+                            handleImageStoreChanged();
+                        }
+                    });
                 }
             };
             context().registerReceiver(imageWatcherReceiver,
-                    new IntentFilter(AvindexStore.ACTION_AVINDEX_DATABASE_UPDATED));
+                    new IntentFilter(AvindexStore.ACTION_AVINDEX_DATABASE_UPDATED),
+                    null,
+                    handler);
         }
 
         @Override
@@ -142,11 +149,16 @@ public abstract class MediaManager {
         private ContentObserver imageWatcherObserver;
 
         @Override
-        protected void startWatchingImages() {
-            imageWatcherObserver = new ContentObserver(new Handler(Looper.getMainLooper())) {
+        protected void startWatchingImages(Handler handler) {
+            final Handler watchHandler = handler;
+            imageWatcherObserver = new ContentObserver(handler) {
                 @Override
                 public void onChange(boolean selfChange) {
-                    handleImageStoreChanged();
+                    watchHandler.post(new Runnable() {
+                        public void run() {
+                            handleImageStoreChanged();
+                        }
+                    });
                 }
             };
             context().getContentResolver().registerContentObserver(
@@ -170,9 +182,10 @@ public abstract class MediaManager {
     public static final int MEDIA_MEMORY_STICK = 2;
 
     /**
-     * Notified when a newer image appears in the store. {@link #onImageAdded} runs on the main thread and keeps
-     * firing for each newer image until you pass {@code null} to {@link #setImageAddedListener}; pass {@code null}
-     * from {@code onPause()}.
+     * Notified when a newer image appears in the store. {@link #onImageAdded} runs on the watch {@link Handler}
+     * (main looper if null), after the broadcast returns; it keeps firing for each newer image until you pass
+     * {@code null} to {@link #setImageAddedListener}; pass {@code null} from {@code onPause()}. A background
+     * {@code HandlerThread} keeps decode/crop work off the main thread.
      */
     public interface ImageAddedListener {
         void onImageAdded(long id);
@@ -192,8 +205,10 @@ public abstract class MediaManager {
     private final Uri uri;
     private final String idField;
     private final String dateField;
+    private final Object imageAddedListenerLock = new Object();
     private ImageAddedListener imageAddedListener;
     private long newestImageIdBaseline = -1L;
+    private Handler imageWatchHandler;
 
     private MediaManager(Context context, Uri uri, String idField, String dateField) {
         this.context = context;
@@ -245,16 +260,28 @@ public abstract class MediaManager {
     }
 
     /**
-     * Watch for new images; {@link ImageAddedListener#onImageAdded} runs on the main thread for each newer id until
-     * you pass {@code null}. Pass {@code null} from {@code onPause()}: this holds a receiver/observer on the
-     * application context.
+     * Watch for new images; {@link ImageAddedListener#onImageAdded} runs on the main looper after the broadcast
+     * returns. Pass {@code null} from {@code onPause()}: this holds a receiver/observer on the application context.
      */
     public void setImageAddedListener(ImageAddedListener listener) {
+        setImageAddedListener(listener, null);
+    }
+
+    /**
+     * Like {@link #setImageAddedListener(ImageAddedListener)} but runs the store check and
+     * {@link ImageAddedListener#onImageAdded} on {@code handler} (main looper if null), after the broadcast returns.
+     * A background {@code HandlerThread} keeps decode/crop work off the main thread.
+     */
+    public void setImageAddedListener(ImageAddedListener listener, Handler handler) {
         stopWatchingImages();
-        imageAddedListener = listener;
+        synchronized (imageAddedListenerLock) {
+            imageAddedListener = listener;
+            if (listener != null)
+                newestImageIdBaseline = queryNewestImageId();
+        }
         if (listener != null) {
-            newestImageIdBaseline = queryNewestImageId();
-            startWatchingImages();
+            imageWatchHandler = handler != null ? handler : new Handler(Looper.getMainLooper());
+            startWatchingImages(imageWatchHandler);
         }
     }
 
@@ -271,16 +298,27 @@ public abstract class MediaManager {
     }
 
     void handleImageStoreChanged() {
-        if (imageAddedListener == null)
-            return;
-        long id = queryNewestImageId();
-        if (id > newestImageIdBaseline) {
-            newestImageIdBaseline = id;
-            imageAddedListener.onImageAdded(id);
+        ImageAddedListener listener;
+        synchronized (imageAddedListenerLock) {
+            listener = imageAddedListener;
+            if (listener == null)
+                return;
         }
+        long id = queryNewestImageId();
+        ImageAddedListener listenerToCall = null;
+        synchronized (imageAddedListenerLock) {
+            if (imageAddedListener != listener)
+                return;
+            if (id > newestImageIdBaseline) {
+                newestImageIdBaseline = id;
+                listenerToCall = listener;
+            }
+        }
+        if (listenerToCall != null)
+            listenerToCall.onImageAdded(id);
     }
 
-    protected abstract void startWatchingImages();
+    protected abstract void startWatchingImages(Handler handler);
 
     protected abstract void stopWatchingImages();
 
