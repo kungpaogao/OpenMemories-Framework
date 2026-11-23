@@ -62,6 +62,7 @@ public final class ImageFilters {
                 filter.setDestSize(width & ~3, height & ~1);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
@@ -76,6 +77,7 @@ public final class ImageFilters {
                 filter.setSrcRect(rect);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
@@ -91,6 +93,7 @@ public final class ImageFilters {
                 filter.setRotation(degrees);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
@@ -105,6 +108,7 @@ public final class ImageFilters {
                 filter.setMiniatureArea(area);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
@@ -121,6 +125,7 @@ public final class ImageFilters {
                 filter.setNRLevel(level);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
@@ -135,6 +140,7 @@ public final class ImageFilters {
                 filter.setCompensationMode(mode);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
@@ -148,6 +154,7 @@ public final class ImageFilters {
                 filter.setSource(image, false);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
@@ -162,6 +169,7 @@ public final class ImageFilters {
                 filter.setEffectLevel(level);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
@@ -175,6 +183,7 @@ public final class ImageFilters {
                 filter.setSource(image, false);
                 return output(filter);
             } finally {
+                filter.clearSources();
                 filter.release();
             }
         }
