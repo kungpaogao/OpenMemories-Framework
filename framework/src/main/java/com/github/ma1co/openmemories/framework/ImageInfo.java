@@ -256,6 +256,15 @@ public abstract class ImageInfo {
     }
 
     /**
+     * Closes the database cursor this object holds. Call it when done, e.g. after {@link StillImage#decodeImage}.
+     * Other methods may fail afterwards. Safe to call twice.
+     */
+    public void release() {
+        if (!cursor.isClosed())
+            cursor.close();
+    }
+
+    /**
      * Returns the image's {@code _data} column. On a camera this is an avindex URI such as
      * {@code avindex://1000/00000001-default/000003AC-00001312}; elsewhere it is a file path.
      */
