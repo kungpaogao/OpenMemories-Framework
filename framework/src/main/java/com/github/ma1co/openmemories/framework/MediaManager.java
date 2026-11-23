@@ -1,11 +1,17 @@
 package com.github.ma1co.openmemories.framework;
 
+import android.content.BroadcastReceiver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.StatFs;
 import android.provider.MediaStore;
 import com.sony.scalar.provider.AvindexStore;
@@ -80,6 +86,29 @@ public abstract class MediaManager {
             com.sony.scalar.media.MediaInfo info = AvindexStore.getMediaInfo(mediaId);
             return info != null && info.isEyeFi();
         }
+
+        private BroadcastReceiver imageWatcherReceiver;
+
+        @Override
+        protected void startWatchingImages() {
+            // Camera.setStoredImageListener never fires on the ILCE-7R.
+            imageWatcherReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context ctxt, Intent intent) {
+                    handleImageStoreChanged();
+                }
+            };
+            context().registerReceiver(imageWatcherReceiver,
+                    new IntentFilter(AvindexStore.ACTION_AVINDEX_DATABASE_UPDATED));
+        }
+
+        @Override
+        protected void stopWatchingImages() {
+            if (imageWatcherReceiver != null) {
+                context().unregisterReceiver(imageWatcherReceiver);
+                imageWatcherReceiver = null;
+            }
+        }
     }
 
     /**
@@ -90,6 +119,28 @@ public abstract class MediaManager {
         private AndroidMediaManager(Context context) {
             super(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_TAKEN);
         }
+
+        private ContentObserver imageWatcherObserver;
+
+        @Override
+        protected void startWatchingImages() {
+            imageWatcherObserver = new ContentObserver(new Handler(Looper.getMainLooper())) {
+                @Override
+                public void onChange(boolean selfChange) {
+                    handleImageStoreChanged();
+                }
+            };
+            context().getContentResolver().registerContentObserver(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, imageWatcherObserver);
+        }
+
+        @Override
+        protected void stopWatchingImages() {
+            if (imageWatcherObserver != null) {
+                context().getContentResolver().unregisterContentObserver(imageWatcherObserver);
+                imageWatcherObserver = null;
+            }
+        }
     }
 
     public static final int CONTENT_STILL = 1;
@@ -98,6 +149,15 @@ public abstract class MediaManager {
     public static final int MEDIA_UNKNOWN = 0;
     public static final int MEDIA_SD = 1;
     public static final int MEDIA_MEMORY_STICK = 2;
+
+    /**
+     * Notified when a newer image appears in the store. {@link #onImageAdded} runs on the main thread and keeps
+     * firing for each newer image until you pass {@code null} to {@link #setImageAddedListener}; pass {@code null}
+     * from {@code onPause()}.
+     */
+    public interface ImageAddedListener {
+        void onImageAdded(long id);
+    }
 
     /**
      * Creates a new MediaManager instance
@@ -113,6 +173,8 @@ public abstract class MediaManager {
     private final Uri uri;
     private final String idField;
     private final String dateField;
+    private ImageAddedListener imageAddedListener;
+    private long newestImageIdBaseline = -1L;
 
     private MediaManager(Context context, Uri uri, String idField, String dateField) {
         this.context = context;
@@ -162,6 +224,46 @@ public abstract class MediaManager {
     public long getImageId(Cursor cursor) {
         return cursor.getLong(cursor.getColumnIndexOrThrow(idField));
     }
+
+    /**
+     * Watch for new images; {@link ImageAddedListener#onImageAdded} runs on the main thread for each newer id until
+     * you pass {@code null}. Pass {@code null} from {@code onPause()}: this holds a receiver/observer on the
+     * application context.
+     */
+    public void setImageAddedListener(ImageAddedListener listener) {
+        stopWatchingImages();
+        imageAddedListener = listener;
+        if (listener != null) {
+            newestImageIdBaseline = queryNewestImageId();
+            startWatchingImages();
+        }
+    }
+
+    private long queryNewestImageId() {
+        Cursor cursor = queryNewestImages();
+        try {
+            if (cursor == null || !cursor.moveToFirst())
+                return -1L;
+            return getImageId(cursor);
+        } finally {
+            if (cursor != null)
+                cursor.close();
+        }
+    }
+
+    void handleImageStoreChanged() {
+        if (imageAddedListener == null)
+            return;
+        long id = queryNewestImageId();
+        if (id > newestImageIdBaseline) {
+            newestImageIdBaseline = id;
+            imageAddedListener.onImageAdded(id);
+        }
+    }
+
+    protected abstract void startWatchingImages();
+
+    protected abstract void stopWatchingImages();
 
     /**
      * Creates a new {@link ImageInfo} instance for the given image id
