@@ -70,9 +70,12 @@ public class Camera {
                 installCaptureListener();
             } catch (Throwable ignored) {
             }
-            try {
-                installJpegListener();
-            } catch (Throwable ignored) {
+            // Only while a listener is set. The camera's own JPEG store is only verified with no CameraEx JPEG listener installed.
+            if (jpegListener != null) {
+                try {
+                    installJpegListener();
+                } catch (Throwable ignored) {
+                }
             }
             try {
                 installFocusListener();
@@ -210,6 +213,20 @@ public class Camera {
                 cameraEx.release();
                 cameraEx = null;
             }
+        }
+
+        /**
+         * Installs the {@code CameraEx} JPEG listener only while {@code listener} is non-null. Pass null to remove it.
+         */
+        @Override
+        public void setJpegListener(JpegListener listener) {
+            super.setJpegListener(listener);
+            if (cameraEx == null)
+                return;
+            if (listener != null)
+                installJpegListener();
+            else
+                cameraEx.setJpegListener(null);
         }
 
         @Override
