@@ -361,6 +361,11 @@ public class Camera {
         }
 
         @Override
+        public void adjustProgramShift(int steps) {
+            cameraEx.adjustProgramLine(steps);
+        }
+
+        @Override
         public boolean shiftFocus(int steps) {
             return cameraEx.shiftFocusPosition(steps);
         }
@@ -875,6 +880,13 @@ public class Camera {
     }
 
     public void adjustAperture(int steps) {
+    }
+
+    /**
+     * Move program line in P mode ({@code steps} of one detent; {@code 0} resets).
+     * On a camera this calls {@code CameraEx.adjustProgramLine}; on an emulator this is a no-op.
+     */
+    public void adjustProgramShift(int steps) {
     }
 
     public boolean shiftFocus(int steps) {
