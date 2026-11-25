@@ -2,6 +2,7 @@ package com.github.ma1co.openmemories.framework;
 
 import android.content.Context;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
 import com.github.ma1co.openmemories.util.BiMap;
@@ -103,10 +104,44 @@ public class DisplayManager {
         }
 
         @Override
+        public Rect getVideoRect() {
+            com.sony.scalar.hardware.avio.DisplayManager.VideoRect r = manager.getDisplayedVideoRect();
+            Rect rect = toVideoRect(r);
+            if (rect == null)
+                return super.getVideoRect();
+            return rect;
+        }
+
+        @Override
+        public void setVideoRectListener(final VideoRectListener listener) {
+            if (listener == null) {
+                manager.releaseLayoutStatusListener();
+                return;
+            }
+            manager.setLayoutStatusListener(new com.sony.scalar.hardware.avio.DisplayManager.VideoLayoutStatusListener() {
+                @Override
+                public void onLayoutChanged(com.sony.scalar.hardware.avio.DisplayManager.VideoRect rect) {
+                    Rect converted = toVideoRect(rect);
+                    if (converted != null)
+                        listener.onVideoRectChanged(converted);
+                }
+            });
+        }
+
+        private static Rect toVideoRect(com.sony.scalar.hardware.avio.DisplayManager.VideoRect r) {
+            if (r == null || r.pxRight <= r.pxLeft || r.pxBottom <= r.pxTop)
+                return null;
+            return new Rect(r.pxLeft, r.pxTop, r.pxRight, r.pxBottom);
+        }
+
+        @Override
         public void release() {
-            manager.releaseDisplayStatusListener();
-            manager.finish();
-            manager = null;
+            if (manager != null) {
+                manager.releaseLayoutStatusListener();
+                manager.releaseDisplayStatusListener();
+                manager.finish();
+                manager = null;
+            }
         }
     }
 
@@ -168,6 +203,11 @@ public class DisplayManager {
     /** Receives every display event, including HDMI and viewfinder attach. */
     public interface EventListener {
         void onDisplayEvent(int event);
+    }
+
+    /** Notified when the live-view rectangle on the frame buffer changes. Only fired on a Sony camera. */
+    public interface VideoRectListener {
+        void onVideoRectChanged(Rect rect);
     }
 
     public static final int EVENT_SWITCH_DEVICE = 4096;
@@ -269,6 +309,23 @@ public class DisplayManager {
         DisplayMetrics metrics = new DisplayMetrics();
         display.getMetrics(metrics);
         return new DisplayInfo(metrics.widthPixels, metrics.heightPixels, 1f * metrics.widthPixels / metrics.heightPixels);
+    }
+
+    /**
+     * Rectangle where the camera draws live view, in frame-buffer pixels.
+     * On a camera this comes from {@code DisplayManager.getDisplayedVideoRect}; on an emulator this is the
+     * full frame buffer from {@link #getFrameBufferInfo()}.
+     */
+    public Rect getVideoRect() {
+        DisplayInfo fb = getFrameBufferInfo();
+        return new Rect(0, 0, fb.width, fb.height);
+    }
+
+    /**
+     * Register for live-view layout changes. On a camera this wraps
+     * {@code setLayoutStatusListener}; on an emulator this is a no-op. Pass {@code null} to unregister.
+     */
+    public void setVideoRectListener(VideoRectListener listener) {
     }
 
     /**
