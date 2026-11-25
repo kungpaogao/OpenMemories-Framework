@@ -107,6 +107,35 @@ public abstract class MediaManager {
         }
 
         private BroadcastReceiver imageWatcherReceiver;
+        private BroadcastReceiver availableShotsReceiver;
+
+        @Override
+        public int getAvailableShots() {
+            String[] ids = getMediaIds();
+            if (ids.length == 0)
+                return -1;
+            return AvindexStore.Images.getAvailableCount(ids[0]);
+        }
+
+        @Override
+        protected void startWatchingAvailableShots() {
+            availableShotsReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context ctxt, Intent intent) {
+                    handleAvailableShotsChanged();
+                }
+            };
+            context().registerReceiver(availableShotsReceiver,
+                    new IntentFilter(AvindexStore.ACTION_AVINDEX_MEDIA_AVAILABLE_SIZE_CHANGED));
+        }
+
+        @Override
+        protected void stopWatchingAvailableShots() {
+            if (availableShotsReceiver != null) {
+                context().unregisterReceiver(availableShotsReceiver);
+                availableShotsReceiver = null;
+            }
+        }
 
         @Override
         protected void startWatchingImages(Handler handler) {
@@ -192,6 +221,13 @@ public abstract class MediaManager {
     }
 
     /**
+     * Notified when the estimated shots remaining on the card changes. Only fired on a Sony camera.
+     */
+    public interface AvailableShotsListener {
+        void onAvailableShotsChanged(int shots);
+    }
+
+    /**
      * Creates a new MediaManager instance
      */
     public static MediaManager create(Context context) {
@@ -207,6 +243,7 @@ public abstract class MediaManager {
     private final String dateField;
     private final Object imageAddedListenerLock = new Object();
     private ImageAddedListener imageAddedListener;
+    private AvailableShotsListener availableShotsListener;
     private long newestImageIdBaseline = -1L;
     private Handler imageWatchHandler;
 
@@ -321,6 +358,38 @@ public abstract class MediaManager {
     protected abstract void startWatchingImages(Handler handler);
 
     protected abstract void stopWatchingImages();
+
+    protected void startWatchingAvailableShots() {
+    }
+
+    protected void stopWatchingAvailableShots() {
+    }
+
+    void handleAvailableShotsChanged() {
+        AvailableShotsListener listener = availableShotsListener;
+        if (listener != null)
+            listener.onAvailableShotsChanged(getAvailableShots());
+    }
+
+    /**
+     * Estimated still shots that fit on the first external card.
+     * On a camera this calls {@code AvindexStore.Images.getAvailableCount}; on an emulator this returns -1.
+     */
+    public int getAvailableShots() {
+        return -1;
+    }
+
+    /**
+     * Register for shots-remaining updates. On a camera this listens for
+     * {@code ACTION_AVINDEX_MEDIA_AVAILABLE_SIZE_CHANGED}; on an emulator this is a no-op.
+     * Pass {@code null} from {@code onPause()}.
+     */
+    public void setAvailableShotsListener(AvailableShotsListener listener) {
+        stopWatchingAvailableShots();
+        availableShotsListener = listener;
+        if (listener != null)
+            startWatchingAvailableShots();
+    }
 
     /**
      * Creates a new {@link ImageInfo} instance for the given image id
