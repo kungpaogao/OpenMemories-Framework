@@ -17,6 +17,28 @@ import java.util.Map;
  */
 public class CameraParameters {
     /**
+     * Scene mode string for program auto (P). On a Sony camera this is the exposure mode;
+     * {@link android.hardware.Camera.Parameters} uses the same value on an emulator.
+     */
+    public static final String SCENE_MODE_PROGRAM = "program-auto";
+    /**
+     * Scene mode string for aperture priority (A). On a Sony camera this is the exposure mode.
+     */
+    public static final String SCENE_MODE_APERTURE = "aperture-priority";
+    /**
+     * Scene mode string for shutter priority (S). On a Sony camera this is the exposure mode.
+     */
+    public static final String SCENE_MODE_SHUTTER = "shutter-speed";
+    /**
+     * Scene mode string for manual (M). On a Sony camera this is the exposure mode.
+     */
+    public static final String SCENE_MODE_MANUAL = "manual-exposure";
+    /**
+     * Scene mode string for intelligent auto. On a Sony camera this is the exposure mode.
+     */
+    public static final String SCENE_MODE_AUTO = "auto";
+
+    /**
      * Parameter implementation used on Sony cameras.
      */
     public static class DeviceParameters extends CameraParameters {
@@ -625,6 +647,14 @@ public class CameraParameters {
 
     public int getMaxExposureCompensation() {
         return parameters.getMaxExposureCompensation();
+    }
+
+    /**
+     * EV step size for {@link #getExposureCompensation()} indices (e.g. 0.333 or 0.5).
+     * Reads {@link android.hardware.Camera.Parameters#getExposureCompensationStep()} on both camera and emulator.
+     */
+    public float getExposureCompensationStep() {
+        return parameters.getExposureCompensationStep();
     }
 
     public int getJpegQuality() {
