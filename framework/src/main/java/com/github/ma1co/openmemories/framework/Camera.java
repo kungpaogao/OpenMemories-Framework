@@ -27,6 +27,9 @@ public class Camera {
      * Camera implementation used on Sony cameras.
      */
     public static class DeviceCamera extends Camera {
+        /** Quick AF behavior Sony's apps use for half-press AF-S ("afc_woaf" for AF-C maps to it too). */
+        private static final String QUICK_AUTO_FOCUS = "af_woaf";
+
         private CameraEx cameraEx;
         private final Map<GammaCurve, CameraEx.GammaTable> gammaTables = new IdentityHashMap<GammaCurve, CameraEx.GammaTable>();
 
@@ -101,6 +104,10 @@ public class Camera {
                 installStoreListener();
             } catch (Throwable ignored) {
             }
+            try {
+                installAutoFocusListener();
+            } catch (Throwable ignored) {
+            }
         }
 
         private void installShutterListener() {
@@ -138,6 +145,21 @@ public class Camera {
                 @Override public void onChanged(CameraEx.FocusPosition position, CameraEx camera) {
                     if (focusListener != null && position != null)
                         focusListener.onFocus(position.currentPosition, position.maxPosition);
+                }
+            });
+        }
+
+        private void installAutoFocusListener() {
+            cameraEx.setAutoFocusDoneListener(new CameraEx.AutoFocusDoneListener() {
+                @Override public void onDone(int status, int[] areas, CameraEx camera) {
+                    if (autoFocusListener == null)
+                        return;
+                    // STATUS_CLEAR (released) and STATUS_WORKING are not results.
+                    if (status == CameraEx.AutoFocusDoneListener.STATUS_LOCK
+                            || status == CameraEx.AutoFocusDoneListener.STATUS_CONTINUOUS)
+                        autoFocusListener.onAutoFocus(true);
+                    else if (status == CameraEx.AutoFocusDoneListener.STATUS_LOCK_WARN)
+                        autoFocusListener.onAutoFocus(false);
                 }
             });
         }
@@ -300,19 +322,20 @@ public class Camera {
             });
         }
 
+        /**
+         * Starts AF and holds focus until {@link #cancelAutoFocus()}, like a half-press. The Android
+         * {@code Camera.autoFocus} never starts AF on the ILCE-7R (the camera answers {@code STATUS_CLEAR} at
+         * once), so this uses the quick AF that Sony's own apps use; the result comes from
+         * {@code AutoFocusDoneListener}.
+         */
         @Override
         public void autoFocus() {
-            cameraEx.getNormalCamera().autoFocus(new android.hardware.Camera.AutoFocusCallback() {
-                @Override public void onAutoFocus(boolean success, android.hardware.Camera camera) {
-                    if (autoFocusListener != null)
-                        autoFocusListener.onAutoFocus(success);
-                }
-            });
+            cameraEx.setQuickAutoFocus(QUICK_AUTO_FOCUS);
         }
 
         @Override
         public void cancelAutoFocus() {
-            cameraEx.getNormalCamera().cancelAutoFocus();
+            cameraEx.resetQuickAutoFocus(QUICK_AUTO_FOCUS);
         }
 
         @Override
