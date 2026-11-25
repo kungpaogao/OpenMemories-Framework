@@ -15,9 +15,9 @@ Build Android apps for your favorite Sony camera.
     }
     // app/build.gradle.kts
     dependencies {
-        implementation("com.github.kungpaogao.OpenMemories-Framework:framework:0.2.1")
+        implementation("com.github.kungpaogao.OpenMemories-Framework:framework:0.3.0")
         // Sony API stubs, to call com.sony.scalar directly. Never package them: the camera provides the real classes.
-        compileOnly("com.github.kungpaogao.OpenMemories-Framework:stubs:0.2.1")
+        compileOnly("com.github.kungpaogao.OpenMemories-Framework:stubs:0.3.0")
     }
     ```
 
