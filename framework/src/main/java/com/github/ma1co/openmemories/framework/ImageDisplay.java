@@ -1,6 +1,8 @@
 package com.github.ma1co.openmemories.framework;
 
+import android.content.Context;
 import android.graphics.Matrix;
+import android.view.View;
 import android.widget.ImageView;
 import com.sony.scalar.widget.OptimizedImageView;
 
@@ -70,8 +72,19 @@ public class ImageDisplay {
         throw new IllegalArgumentException("Expected an ImageView");
     }
 
+    /** Creates the view {@link #attach(Object)} expects: an {@code OptimizedImageView} on a camera and an {@link ImageView} elsewhere. */
+    public static View createView(Context context) {
+        if (DeviceInfo.getInstance().isCamera())
+            return DeviceAttach.createView(context);
+        return new ImageView(context);
+    }
+
     /** Camera attach. Loaded only on a camera. */
     public static class DeviceAttach {
+        static View createView(Context context) {
+            return new OptimizedImageView(context);
+        }
+
         static ImageDisplay attach(Object view) {
             if (view instanceof OptimizedImageView)
                 return new DeviceDisplay((OptimizedImageView) view);

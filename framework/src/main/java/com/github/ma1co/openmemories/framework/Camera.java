@@ -31,6 +31,7 @@ public class Camera {
         private static final String QUICK_AUTO_FOCUS = "af_woaf";
 
         private CameraEx cameraEx;
+        private CameraEx.AutoPictureReviewControl autoReview;
         private final Map<GammaCurve, CameraEx.GammaTable> gammaTables = new IdentityHashMap<GammaCurve, CameraEx.GammaTable>();
 
         private DeviceCamera(OpenOptions options) {
@@ -266,6 +267,7 @@ public class Camera {
                 cameraEx.release();
                 cameraEx = null;
             }
+            autoReview = null;
         }
 
         /**
@@ -287,6 +289,7 @@ public class Camera {
             cameraEx.reopen(toNativeOptions(options), new CameraEx.OpenCallback() {
                 @Override public void onReopened(CameraEx camera) {
                     cameraEx = camera;
+                    autoReview = null;
                     installListeners();
                     if (callback != null)
                         callback.onReopened();
@@ -452,6 +455,25 @@ public class Camera {
         @Override
         public int getPreviewMagnificationRatio(int level) {
             return cameraEx.getPreviewMagnificationRatio(level);
+        }
+
+        /** Sony's apps install one control per open camera and set the review time on it. */
+        private CameraEx.AutoPictureReviewControl autoReview() {
+            if (autoReview == null) {
+                autoReview = new CameraEx.AutoPictureReviewControl();
+                cameraEx.setAutoPictureReviewControl(autoReview);
+            }
+            return autoReview;
+        }
+
+        @Override
+        public int getAutoReviewTime() {
+            return autoReview().getPictureReviewTime();
+        }
+
+        @Override
+        public void setAutoReviewTime(int time) {
+            autoReview().setPictureReviewTime(time);
         }
 
         @Override
@@ -793,6 +815,7 @@ public class Camera {
     protected StoredImageListener storedImageListener;
     protected MagnificationListener magnificationListener;
     private boolean magnified;
+    private int autoReviewTime;
 
     private Camera(android.hardware.Camera camera) {
         this.camera = camera;
@@ -1039,6 +1062,20 @@ public class Camera {
         if (level == 3)
             return 1170;
         return 0;
+    }
+
+    /**
+     * How long the camera shows each picture after taking it, its Auto Review setting, in the camera's own units; 0 is off.
+     * Sony's apps read it, set 0 while they process pictures themselves, and set it back before they close the camera.
+     * The emulator only remembers the value.
+     */
+    public int getAutoReviewTime() {
+        return autoReviewTime;
+    }
+
+    /** Sets {@link #getAutoReviewTime()}; 0 turns the review off. */
+    public void setAutoReviewTime(int time) {
+        autoReviewTime = time;
     }
 
     public Lens getLens() {
