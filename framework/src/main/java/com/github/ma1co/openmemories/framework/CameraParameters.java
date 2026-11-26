@@ -456,6 +456,21 @@ public class CameraParameters {
         }
 
         @Override
+        public List<Integer> getSupportedPreviewMagnification() {
+            return integers(modifier.getSupportedPreviewMagnification());
+        }
+
+        @Override
+        public boolean getMfAssist() {
+            return modifier.getPreviewMagnificationOnManualFocus();
+        }
+
+        @Override
+        public int getMfAssistSeconds() {
+            return modifier.getPreviewMagnificationTimeOnManualFocus();
+        }
+
+        @Override
         public int getAperture() {
             return modifier.getAperture();
         }
@@ -998,6 +1013,21 @@ public class CameraParameters {
 
     public void setSilentShutter(boolean enabled) {
         silentShutter = enabled;
+    }
+
+    /** Magnification levels for {@link com.github.ma1co.openmemories.framework.Camera#setPreviewMagnification(int, int, int)}. The emulator returns 2 and 3. */
+    public List<Integer> getSupportedPreviewMagnification() {
+        return Arrays.asList(Integer.valueOf(2), Integer.valueOf(3));
+    }
+
+    /** The camera's "MF Assist" menu setting: whether turning the focus ring magnifies the preview. The emulator returns false. */
+    public boolean getMfAssist() {
+        return false;
+    }
+
+    /** Seconds the camera keeps the MF Assist magnification, 0 for no limit. The emulator returns 0. */
+    public int getMfAssistSeconds() {
+        return 0;
     }
 
     public int getAperture() {

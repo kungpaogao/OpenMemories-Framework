@@ -108,6 +108,10 @@ public class Camera {
                 installAutoFocusListener();
             } catch (Throwable ignored) {
             }
+            try {
+                installMagnificationListener();
+            } catch (Throwable ignored) {
+            }
         }
 
         private void installShutterListener() {
@@ -162,6 +166,33 @@ public class Camera {
                         autoFocusListener.onAutoFocus(false);
                 }
             });
+        }
+
+        private void installMagnificationListener() {
+            cameraEx.setPreviewMagnificationListener(new CameraEx.PreviewMagnificationListener() {
+                @Override public void onChanged(boolean onoff, int mag, int magLevel, Pair coordinates, CameraEx camera) {
+                    if (magnificationListener == null)
+                        return;
+                    if (!onoff) {
+                        magnificationListener.onMagnificationChanged(false, 0, 0, 0, 0);
+                        return;
+                    }
+                    magnificationListener.onMagnificationChanged(true, mag, magLevel, pairX(coordinates), pairY(coordinates));
+                }
+
+                @Override public void onInfoUpdated(boolean focusRingRotating, Pair focusPos, CameraEx camera) {
+                    if (magnificationListener != null)
+                        magnificationListener.onFocusRing(focusRingRotating, pairX(focusPos), pairY(focusPos));
+                }
+            });
+        }
+
+        private static int pairX(Pair pair) {
+            return pair == null || !(pair.first instanceof Integer) ? 0 : ((Integer) pair.first).intValue();
+        }
+
+        private static int pairY(Pair pair) {
+            return pair == null || !(pair.second instanceof Integer) ? 0 : ((Integer) pair.second).intValue();
         }
 
         private void installApertureListener() {
@@ -416,6 +447,11 @@ public class Camera {
         @Override
         public void stopPreviewMagnification() {
             cameraEx.stopPreviewMagnification();
+        }
+
+        @Override
+        public int getPreviewMagnificationRatio(int level) {
+            return cameraEx.getPreviewMagnificationRatio(level);
         }
 
         @Override
@@ -685,6 +721,33 @@ public class Camera {
         void onStored(int status, String directory, String filename);
     }
 
+    /**
+     * Receives preview magnification (focus magnifier) events from the camera.
+     */
+    public interface MagnificationListener {
+        /**
+         * Magnification was turned on, off, or moved.
+         *
+         * @param on    whether the preview is magnified
+         * @param ratio actual magnification times 100 (590 is x5.9)
+         * @param level magnification level, as listed by {@link CameraParameters#getSupportedPreviewMagnification()}
+         * @param x     center of the magnified area, -1000..1000 with 0 at the center
+         * @param y     center of the magnified area, -1000..1000 with 0 at the center
+         *              When {@code on} is false, {@code ratio}, {@code level}, {@code x} and {@code y} are 0.
+         */
+        void onMagnificationChanged(boolean on, int ratio, int level, int x, int y);
+
+        /**
+         * The focus ring started or stopped turning.
+         *
+         * @param rotating true while the ring turns
+         * @param x        focused position, -1000..1000 with 0 at the center
+         * @param y        focused position, -1000..1000 with 0 at the center
+         *                 {@code x} and {@code y} are 0, 0 when the position is unknown.
+         */
+        void onFocusRing(boolean rotating, int x, int y);
+    }
+
     public interface ReopenCallback {
         void onReopened();
     }
@@ -728,6 +791,8 @@ public class Camera {
     protected ZoomListener zoomListener;
     protected FaceListener faceListener;
     protected StoredImageListener storedImageListener;
+    protected MagnificationListener magnificationListener;
+    private boolean magnified;
 
     private Camera(android.hardware.Camera camera) {
         this.camera = camera;
@@ -776,6 +841,10 @@ public class Camera {
 
     public void setStoredImageListener(StoredImageListener listener) {
         storedImageListener = listener;
+    }
+
+    public void setMagnificationListener(MagnificationListener listener) {
+        magnificationListener = listener;
     }
 
     /** Self-timer delay used by the emulator implementation, in milliseconds. */
@@ -943,10 +1012,33 @@ public class Camera {
         cancelTakePicture();
     }
 
+    /**
+     * Magnifies the preview. {@code level} is one of {@link CameraParameters#getSupportedPreviewMagnification()};
+     * {@code x} and {@code y} are -1000..1000. The emulator reports the change to the {@link MagnificationListener} at once.
+     */
     public void setPreviewMagnification(int ratio, int x, int y) {
+        magnified = true;
+        if (magnificationListener != null)
+            magnificationListener.onMagnificationChanged(true, getPreviewMagnificationRatio(ratio), ratio, x, y);
     }
 
     public void stopPreviewMagnification() {
+        if (!magnified)
+            return;
+        magnified = false;
+        if (magnificationListener != null)
+            magnificationListener.onMagnificationChanged(false, 0, 0, 0, 0);
+    }
+
+    /**
+     * Actual magnification times 100 for a level (590 is x5.9). The emulator knows levels 2 (590) and 3 (1170) and returns 0 for others.
+     */
+    public int getPreviewMagnificationRatio(int level) {
+        if (level == 2)
+            return 590;
+        if (level == 3)
+            return 1170;
+        return 0;
     }
 
     public Lens getLens() {

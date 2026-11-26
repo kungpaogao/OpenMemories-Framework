@@ -106,6 +106,8 @@ mediaManager.setImageAddedListener(new MediaManager.ImageAddedListener() {
 camera.takePicture();
 ```
 
+For manual-focus punch-in, `Camera.setMagnificationListener` reports magnification changes (`onMagnificationChanged(on, ratio, level, x, y)`, ratio times 100) and focus-ring turns (`onFocusRing(rotating, x, y)`). `Camera.getPreviewMagnificationRatio(level)` maps a level to its ratio. `CameraParameters.getSupportedPreviewMagnification()`, `getMfAssist()` and `getMfAssistSeconds()` read the supported levels and the camera's MF Assist menu setting. The emulator supports levels 2 and 3 and sends no focus-ring events.
+
 Other camera-OS wrappers follow the same pattern: {@code CaptureSequence}, {@code ImageFilters}, {@code FaceFinder}, {@code SignalProcessor}, {@code CameraKeys}, {@code IndicatorLights}, {@code CameraSystem}, {@code CameraNotices}, {@code AudioDevices}, {@code MovieRecorder}, {@code MoviePlayer}, {@code HighlightMovie}, and {@code ImageDisplay}.
 
 The PlayMemories Web API and Leza HTTP stack are libraries shipped inside those apps. They are not part of the camera OS, so this framework does not wrap them.
