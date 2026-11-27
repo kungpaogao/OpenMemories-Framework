@@ -112,6 +112,8 @@ For manual-focus punch-in, `Camera.setMagnificationListener` reports magnificati
 
 `ImageDisplay.createView(context)` creates the view `ImageDisplay.attach` expects on the current device.
 
+`Camera.getApertureRange()` and `getShutterSpeedRange()` return the limits the camera sent with its latest aperture or shutter speed change. Sony reports changes about every 200 ms, so an app that wants its readout to follow a dial at once can step the value itself within these limits.
+
 Other camera-OS wrappers follow the same pattern: {@code CaptureSequence}, {@code ImageFilters}, {@code FaceFinder}, {@code SignalProcessor}, {@code CameraKeys}, {@code IndicatorLights}, {@code CameraSystem}, {@code CameraNotices}, {@code AudioDevices}, {@code MovieRecorder}, {@code MoviePlayer}, {@code HighlightMovie}, and {@code ImageDisplay}.
 
 The PlayMemories Web API and Leza HTTP stack are libraries shipped inside those apps. They are not part of the camera OS, so this framework does not wrap them.

@@ -199,6 +199,8 @@ public class Camera {
         private void installApertureListener() {
             cameraEx.setApertureChangeListener(new CameraEx.ApertureChangeListener() {
                 @Override public void onApertureChange(CameraEx.ApertureInfo info, CameraEx camera) {
+                    if (info != null)
+                        apertureRange = new int[] { info.currentAvailableMin, info.currentAvailableMax };
                     if (apertureListener != null && info != null)
                         apertureListener.onAperture(info.currentAperture);
                 }
@@ -208,6 +210,8 @@ public class Camera {
         private void installShutterSpeedListener() {
             cameraEx.setShutterSpeedChangeListener(new CameraEx.ShutterSpeedChangeListener() {
                 @Override public void onShutterSpeedChange(CameraEx.ShutterSpeedInfo info, CameraEx camera) {
+                    if (info != null)
+                        shutterSpeedRange = new int[] { info.currentAvailableMin_n, info.currentAvailableMin_d, info.currentAvailableMax_n, info.currentAvailableMax_d };
                     if (shutterSpeedListener != null && info != null)
                         shutterSpeedListener.onShutterSpeed(info.currentShutterSpeed_n, info.currentShutterSpeed_d);
                 }
@@ -816,6 +820,9 @@ public class Camera {
     protected MagnificationListener magnificationListener;
     private boolean magnified;
     private int autoReviewTime;
+    /** The latest limits the camera reported with an aperture or shutter speed change. */
+    protected volatile int[] apertureRange;
+    protected volatile int[] shutterSpeedRange;
 
     private Camera(android.hardware.Camera camera) {
         this.camera = camera;
@@ -1071,6 +1078,23 @@ public class Camera {
      */
     public int getAutoReviewTime() {
         return autoReviewTime;
+    }
+
+    /**
+     * The apertures the lens can be set to now, as {@code {min, max}} f-numbers times 100, from the camera's latest aperture
+     * change; null until it has reported one, and always on the emulator. Lets an app show the next aperture before the
+     * camera reports it.
+     */
+    public int[] getApertureRange() {
+        return apertureRange == null ? null : apertureRange.clone();
+    }
+
+    /**
+     * The shutter speeds available now, as {@code {minNumerator, minDenominator, maxNumerator, maxDenominator}}, from the
+     * camera's latest shutter speed change; null until it has reported one, and always on the emulator.
+     */
+    public int[] getShutterSpeedRange() {
+        return shutterSpeedRange == null ? null : shutterSpeedRange.clone();
     }
 
     /** Sets {@link #getAutoReviewTime()}; 0 turns the review off. */
